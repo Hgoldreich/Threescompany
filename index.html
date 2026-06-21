@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>3's Are Zero Dice - Multiplayer v2</title>
+<style>
+  :root{--bg:#0b1220;--card:#fff;--ink:#111827;--muted:#64748b;--accent:#2563eb;--good:#16a34a;--warn:#dc2626;--line:#dbe3ef}
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at top,#f8fafc 0,#e7edf6 50%,#cfd9e8 100%);color:var(--ink)}
+  .wrap{max-width:1120px;margin:0 auto;padding:16px}.top{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap} h1{font-size:28px;margin:6px 0} h2{margin:4px 0 12px}.muted{color:var(--muted)}
+  .card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0;box-shadow:0 10px 26px rgba(15,23,42,.08)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.grow{flex:1} input{padding:12px;border:1px solid #cbd5e1;border-radius:12px;font-size:16px;min-width:170px}
+  button{border:0;border-radius:12px;padding:12px 16px;background:var(--accent);color:white;font-weight:850;font-size:16px;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.18)} button.secondary{background:#374151} button.good{background:var(--good)} button.danger{background:var(--warn)} button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+  .tableShell{position:relative;margin:16px 0;border-radius:26px;padding:12px;background:linear-gradient(135deg,#6b3d1f,#2e1b10);box-shadow:0 20px 36px rgba(0,0,0,.25), inset 0 0 0 2px rgba(255,255,255,.08)}
+  canvas{display:block;width:100%;height:min(62vw,520px);min-height:360px;border-radius:18px;background:#14532d;touch-action:manipulation;box-shadow:inset 0 0 80px rgba(0,0,0,.45)}
+  .hint{position:absolute;left:24px;bottom:22px;background:rgba(0,0,0,.45);color:white;border-radius:999px;padding:8px 12px;font-size:13px;backdrop-filter:blur(6px)}
+  .big{font-size:34px;font-weight:950}.score{font-size:22px;font-weight:950}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#fff;font-weight:850}.pill.live{background:#dcfce7;border-color:#86efac;color:#166534}.pill.local{background:#fef9c3;border-color:#fde68a;color:#854d0e}
+  table{width:100%;border-collapse:collapse} th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)} th{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.04em}.right{text-align:right}.winner{font-weight:950;color:#166534}.notice{background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;padding:12px;color:#1e3a8a}.mini{font-size:13px;color:var(--muted)}
+  .rules li{margin:6px 0}.share{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div><h1>3's Are Zero Dice <span class="mini">v2</span></h1><div class="muted">Lowest score wins • multiplayer-ready</div></div><div id="cloudPill" class="pill local">Local mode</div></div>
+
+  <div class="card">
+    <h2>Room</h2>
+    <div class="row"><input id="roomName" placeholder="Room name, e.g. Goldreich" /><button onclick="joinRoom()">Join / Create Room</button><button class="secondary" onclick="copyRoomLink()">Copy Room Link</button></div>
+    <p class="mini">Everyone who opens the same room link sees the same players, rolls, dice, selections, and scores. Firebase config is required for live multiplayer.</p>
+    <div id="shareLink" class="share"></div>
+  </div>
+
+  <div class="card"><div class="row"><input id="playerName" placeholder="Player name" /><button onclick="addPlayer()">Add Player</button><button class="secondary" onclick="newGame()">New Game</button><button class="danger" onclick="resetTotals()">Reset Totals</button></div><p class="muted">Scores carry forward. Each roll is a 2-second top-down table roll.</p></div>
+
+  <div class="card">
+    <div class="row"><div class="grow"><div class="muted">Current player</div><div id="currentPlayer" class="big">Add players to begin</div></div><div><div class="muted">This game</div><div id="turnScore" class="score">0</div></div><div><div class="muted">Dice left</div><div id="diceLeft" class="score">5</div></div></div>
+    <div class="tableShell"><canvas id="tableCanvas"></canvas><div class="hint">Tap dice to select/remove</div></div>
+    <div class="row" style="justify-content:center"><button id="rollBtn" onclick="rollDice()">Roll Dice</button><button id="removeBtn" class="good" onclick="removeSelected()" disabled>Remove Selected Dice</button><button id="endTurnBtn" class="secondary" onclick="finishTurn()" disabled>Finish Turn</button></div>
+    <p id="message" class="notice">After each roll, select the dice to remove. 3's count as zero. You can select multiple dice.</p>
+  </div>
+
+  <div class="card"><h2>Players / Scoreboard</h2><table><thead><tr><th>Player</th><th>Status</th><th class="right">This Game</th><th class="right">Running Total</th><th class="right">Games</th></tr></thead><tbody id="scoreboard"></tbody></table><div class="mini">Lowest running total is leading.</div></div>
+  <div class="card rules"><h2>Rules</h2><ol><li>Each player starts with 5 dice.</li><li>Roll all dice still in play.</li><li>3's count as 0 points.</li><li>The player selects/removes their own 3's. If there are no 3's, select one or more dice to remove.</li><li>Keep rolling until no dice remain.</li><li>Lowest score wins.</li></ol></div>
+</div>
+
+<script type="module">
+/*
+  LIVE MULTIPLAYER SETUP:
+  This version uses your existing Firebase Realtime Database and writes only under:
+  dicegame/rooms/{roomName}
+*/
+const firebaseConfig = {
+  apiKey: "AIzaSyAP7a9OCfjoSEt2WWbNFH1qZ-Wr29PZxK4",
+  authDomain: "goldreich-cloud9-live-lightbar.firebaseapp.com",
+  databaseURL: "https://goldreich-cloud9-live-lightbar-default-rtdb.firebaseio.com",
+  projectId: "goldreich-cloud9-live-lightbar",
+  storageBucket: "goldreich-cloud9-live-lightbar.firebasestorage.app",
+  messagingSenderId: "725981865849",
+  appId: "1:725981865849:web:04eb9272aea73c5b6f71a8"
+};
+
+let db=null, roomRef=null, unsub=null, applyingRemote=false, online=false;
+try{
+  const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js');
+  const { getDatabase, ref, onValue, set, get, child } = await import('https://www.gstatic.com/firebasejs/10.12.5/firebase-database.js');
+  window._fb={ref,onValue,set,get,child};
+  const app=initializeApp(firebaseConfig); db=getDatabase(app); online=true;
+}catch(e){ console.warn('Firebase not connected; using local mode.', e); online=false; }
+
+let players=[], currentIndex=0, dice=[], selected=new Set(), hasRolled=false, isRolling=false, message='After each roll, select the dice to remove. 3\'s count as zero. You can select multiple dice.';
+let currentRoom=new URLSearchParams(location.search).get('room') || '';
+const canvas=document.getElementById('tableCanvas'), ctx=canvas.getContext('2d');
+let W=900,H=500, dpr=1, animId=null, lastRollId=null;
+
+function scoreVal(v){return v===3?0:v} function randDie(){return Math.floor(Math.random()*6)+1}
+function seedRand(seed){let x=Math.sin(seed)*10000;return x-Math.floor(x)}
+function makeId(){return Math.random().toString(36).slice(2,9)}
+function escapeHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function setMsg(s){message=s;document.getElementById('message').textContent=s}
+function activeDice(){return dice.filter(d=>!d.removed)}
+function activeThrees(){return dice.map((d,i)=>({d,i})).filter(x=>!x.d.removed && x.d.value===3).map(x=>x.i)}
+function validSelection(){ const threes=activeThrees(); if(!hasRolled || selected.size===0) return false; if(threes.length){ const arr=[...selected]; return arr.length===threes.length && arr.every(i=>threes.includes(i)); } return true; }
+function dieSize(){return Math.max(64,Math.min(104,W*.105,H*.19))}
+function serialize(){return {players,currentIndex,dice,selected:[...selected],hasRolled,isRolling,message,lastRollId,updatedAt:Date.now()}}
+async function commit(){ if(applyingRemote) return; localStorage.setItem('threesDiceState', JSON.stringify(serialize())); if(roomRef&&online){ await window._fb.set(roomRef, serialize()); } }
+function applyState(s){ if(!s) return; applyingRemote=true; players=s.players||[]; currentIndex=s.currentIndex||0; dice=s.dice||[]; selected=new Set(s.selected||[]); hasRolled=!!s.hasRolled; isRolling=!!s.isRolling; lastRollId=s.lastRollId||null; message=s.message||message; applyingRemote=false; layoutDice(false); updateUI(); draw(); if(isRolling && lastRollId){animateRemoteRoll(lastRollId);} }
+
+window.joinRoom=async function(){ currentRoom=(document.getElementById('roomName').value.trim()||currentRoom||'dice-room').replace(/[^a-z0-9_-]/gi,'-'); history.replaceState(null,'',`?room=${encodeURIComponent(currentRoom)}`); updateRoomUI(); if(unsub)unsub(); if(online){ const {ref,onValue,set,get}=window._fb; roomRef=ref(db,'dicegame/rooms/'+currentRoom); const snap=await get(roomRef); if(!snap.exists()) await set(roomRef, serialize()); unsub=onValue(roomRef,s=>{ if(s.exists()) applyState(s.val()); }); } else { roomRef=null; localStorage.setItem('threesDiceRoom', currentRoom); } };
+window.copyRoomLink=async function(){ const link=location.href; try{await navigator.clipboard.writeText(link); setMsg('Room link copied.');}catch(e){setMsg(link);} };
+function updateRoomUI(){ document.getElementById('roomName').value=currentRoom; document.getElementById('shareLink').textContent=currentRoom?location.href:'Join a room to create a share link.'; const pill=document.getElementById('cloudPill'); pill.textContent=online&&roomRef?'Live room: '+currentRoom:'Local mode'; pill.className='pill '+(online&&roomRef?'live':'local'); }
+
+window.addPlayer=function(){const el=document.getElementById('playerName'); const name=el.value.trim(); if(!name)return; players.push({name,total:0,game:0,games:0,done:false}); el.value=''; if(players.length===1) startTurn(); updateUI(); commit();}
+window.newGame=function(){players.forEach(p=>{p.game=0;p.done=false}); currentIndex=0; startTurn(); commit();}
+window.resetTotals=function(){players.forEach(p=>{p.total=0;p.game=0;p.games=0;p.done=false}); currentIndex=0; startTurn(); commit();}
+function startTurn(){dice=Array.from({length:5},(_,i)=>({value:null,removed:false,x:0,y:0,tx:0,ty:0,rot:0,scale:1,h:0,spin:0,id:i})); selected.clear(); hasRolled=false; isRolling=false; layoutDice(true); setMsg(players.length?`${players[currentIndex].name}, roll 5 dice.`:'Add players to begin'); updateUI(); draw();}
+function layoutDice(force){const active=activeDice(); const n=active.length; const spots={5:[[28,35],[47,30],[66,37],[38,62],[60,67]],4:[[32,34],[64,34],[36,65],[67,64]],3:[[34,36],[55,50],[70,66]],2:[[38,44],[62,58]],1:[[50,50]]}[n]||[]; active.forEach((d,i)=>{d.tx=W*spots[i][0]/100; d.ty=H*spots[i][1]/100; if(force||!d.x){d.x=d.tx;d.y=d.ty;d.rot=(Math.random()*50-25)*Math.PI/180}})}
+
+window.rollDice=function(){if(!players.length||isRolling)return; const active=activeDice(); if(!active.length)return; selected.clear(); hasRolled=true; isRolling=true; lastRollId=makeId(); const finals=active.map(()=>randDie()); active.forEach((d,i)=>{d.final=finals[i]; d.value=randDie();}); setMsg('Dice are dropping onto the table...'); updateUI(); commit(); animateRoll(lastRollId, finals, true);}
+function prepDie(d,i,seed,duration){const r1=seedRand(seed+i*13), r2=seedRand(seed+i*29), r3=seedRand(seed+i*41), r4=seedRand(seed+i*61); d.sx=d.tx+(r1*W*.24-W*.12); d.sy=-90-r2*H*.35; d.ex=d.tx+(r3*70-35); d.ey=d.ty+(r4*48-24); d.rot0=r1*Math.PI*2; d.spin=(r2>.5?1:-1)*(Math.PI*5+r3*Math.PI*4); d.delay=i*60;}
+function animateRoll(rollId, finals, shouldCommitEnd){const active=activeDice(); const start=performance.now(), duration=2000; const seed=[...rollId].reduce((a,c)=>a+c.charCodeAt(0),0); active.forEach((d,i)=>prepDie(d,i,seed,duration));
+ function step(t){const elapsed=t-start; active.forEach((d,i)=>{let p=Math.max(0,Math.min(1,(elapsed-d.delay)/(duration-d.delay))); if(p<.96 && Math.random()<.28)d.value=randDie(); if(p>=.96)d.value=finals[i]||d.final||randDie(); const ease=1-Math.pow(1-p,3); const bounce=Math.abs(Math.sin(p*Math.PI*3.2))*(1-p)*70; d.x=d.sx+(d.ex-d.sx)*ease; d.y=d.sy+(d.ey-d.sy)*ease+bounce; d.rot=d.rot0+d.spin*ease; d.scale=.86+.14*ease+Math.sin(p*Math.PI)*.08; d.h=(1-p)*80+bounce*.25;}); draw(); if(elapsed<duration){animId=requestAnimationFrame(step)}else{active.forEach((d,i)=>{d.x=d.ex;d.y=d.ey;d.rot=(Math.random()*60-30)*Math.PI/180;d.scale=1;d.h=0;d.value=finals[i]||d.final||d.value;}); isRolling=false; selected.clear(); setMsg(activeThrees().length ? `You rolled ${activeThrees().length} three${activeThrees().length>1?'s':''}. Select/remove all 3's; they count as 0.` : 'No 3s. Select one or more dice to remove.'); updateUI(); draw(); if(shouldCommitEnd)commit();}}
+ if(animId) cancelAnimationFrame(animId); animId=requestAnimationFrame(step);
+}
+function animateRemoteRoll(rollId){const active=activeDice(); const finals=active.map(d=>d.final||d.value||randDie()); animateRoll(rollId, finals, false);}
+window.removeSelected=function(){if(isRolling||!hasRolled||!validSelection()){setMsg(activeThrees().length ? 'You must select all 3s, and only 3s, before removing.' : 'Select one or more dice to remove.');return;} let add=0; selected.forEach(i=>{const d=dice[i]; if(d&&!d.removed){add+=scoreVal(d.value); d.removed=true;}}); players[currentIndex].game+=add; selected.clear(); hasRolled=false; layoutDice(true); const left=activeDice().length; if(left===0){setMsg(`Turn complete. Score for this game: ${players[currentIndex].game}.`); document.getElementById('endTurnBtn').disabled=false;}else{setMsg(`Removed dice for ${add} point${add===1?'':'s'}. Roll the remaining ${left} dice.`);} updateUI(); draw(); commit();}
+window.finishTurn=function(){if(!players.length)return; const p=players[currentIndex]; p.total+=p.game; p.games+=1; p.done=true; const next=players.findIndex(x=>!x.done); if(next===-1){const low=Math.min(...players.map(x=>x.game)); const winners=players.filter(x=>x.game===low).map(x=>x.name).join(', '); setMsg(`Game complete. Low score this game: ${winners} with ${low}. Press New Game to play again.`); dice=[]; hasRolled=false;}else{currentIndex=next; startTurn();} updateUI(); draw(); commit();}
+function updateUI(){const p=players[currentIndex]; document.getElementById('currentPlayer').textContent=p?p.name:'Add players to begin'; document.getElementById('turnScore').textContent=p?p.game:0; document.getElementById('diceLeft').textContent=dice.length?activeDice().length:5; document.getElementById('rollBtn').disabled=!p||isRolling||hasRolled||activeDice().length===0; document.getElementById('removeBtn').disabled=!p||isRolling||!hasRolled||!validSelection(); document.getElementById('endTurnBtn').disabled=!p||activeDice().length!==0; const body=document.getElementById('scoreboard'); const low=players.length?Math.min(...players.map(p=>p.total)):0; body.innerHTML=players.map((pl,i)=>`<tr><td>${escapeHtml(pl.name)}</td><td>${i===currentIndex&&!pl.done?'Playing':pl.done?'Done':'Waiting'}</td><td class="right">${pl.game}</td><td class="right ${pl.total===low?'winner':''}">${pl.total}</td><td class="right">${pl.games}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">No players yet</td></tr>'; updateRoomUI();}
+canvas.addEventListener('click',e=>{if(isRolling||!hasRolled)return; const rect=canvas.getBoundingClientRect(); const x=(e.clientX-rect.left)*(W/rect.width), y=(e.clientY-rect.top)*(H/rect.height); for(let i=dice.length-1;i>=0;i--){const d=dice[i]; if(d.removed)continue; const s=dieSize(); if(Math.abs(x-d.x)<s*.62&&Math.abs(y-d.y)<s*.62){const th=activeThrees(); if(th.length && d.value!==3){setMsg('There is a 3 on the table. Select all 3s first.'); return;} selected.has(i)?selected.delete(i):selected.add(i); updateUI(); draw(); commit(); return;}}});
+function resize(){dpr=window.devicePixelRatio||1; const r=canvas.getBoundingClientRect(); W=Math.max(700,Math.floor(r.width)); H=Math.max(360,Math.floor(r.height)); canvas.width=W*dpr; canvas.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); layoutDice(false); draw();}
+window.addEventListener('resize',resize);
+function drawTable(){const g=ctx.createRadialGradient(W*.45,H*.42,20,W*.5,H*.5,Math.max(W,H)*.75); g.addColorStop(0,'#22663a'); g.addColorStop(.55,'#155b31'); g.addColorStop(1,'#083a20'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H); ctx.globalAlpha=.16; for(let i=0;i<140;i++){ctx.strokeStyle=i%2?'#ffffff':'#000000'; ctx.beginPath(); const y=(i*17)%H; ctx.moveTo(0,y); ctx.lineTo(W,y+W*.22); ctx.stroke();} ctx.globalAlpha=1; const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.15,W/2,H/2,Math.max(W,H)*.65); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.32)'); ctx.fillStyle=vg; ctx.fillRect(0,0,W,H)}
+function draw(){ctx.clearRect(0,0,W,H); drawTable(); dice.forEach((d,i)=>{if(d.removed)return; drawDie(d,selected.has(i));});}
+function roundRect(x,y,w,h,r){ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();}
+function drawDie(d,isSel){const s=dieSize()*(d.scale||1); ctx.save(); ctx.translate(d.x||d.tx,d.y||d.ty); ctx.rotate(d.rot||0); const shadowOffset=16+(d.h||0)*.12; ctx.save(); ctx.rotate(-(d.rot||0)); const sh=ctx.createRadialGradient(0,shadowOffset,5,0,shadowOffset,s*.9); sh.addColorStop(0,'rgba(0,0,0,.42)'); sh.addColorStop(1,'rgba(0,0,0,0)'); ctx.fillStyle=sh; ctx.beginPath(); ctx.ellipse(0,shadowOffset,s*.65,s*.24,0,0,Math.PI*2); ctx.fill(); ctx.restore(); ctx.translate(0,-(d.h||0)*.03);
+ ctx.fillStyle='#6f0705'; roundRect(-s/2+5,-s/2+8,s,s,14); ctx.fill(); const grad=ctx.createLinearGradient(-s/2,-s/2,s/2,s/2); grad.addColorStop(0,'#ff4a38'); grad.addColorStop(.38,'#d71f18'); grad.addColorStop(.72,'#a7110d'); grad.addColorStop(1,'#690705'); ctx.fillStyle=grad; roundRect(-s/2,-s/2,s,s,14); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='rgba(255,220,200,.42)'; roundRect(-s/2+3,-s/2+3,s-6,s-6,11); ctx.stroke(); ctx.strokeStyle='rgba(70,0,0,.50)'; roundRect(-s/2+1,-s/2+1,s-2,s-2,14); ctx.stroke(); const gloss=ctx.createRadialGradient(-s*.25,-s*.28,1,-s*.25,-s*.28,s*.45); gloss.addColorStop(0,'rgba(255,255,255,.55)'); gloss.addColorStop(.34,'rgba(255,255,255,.18)'); gloss.addColorStop(1,'rgba(255,255,255,0)'); ctx.fillStyle=gloss; roundRect(-s/2,-s/2,s,s,14); ctx.fill(); if(isSel){ctx.lineWidth=6;ctx.strokeStyle='#facc15';roundRect(-s/2-5,-s/2-5,s+10,s+10,18);ctx.stroke();} drawPips(d.value||1,s); ctx.restore();}
+function drawPips(v,s){const r=s*.105, pos={c:[0,0],tl:[-.24,-.24],tr:[.24,-.24],bl:[-.24,.24],br:[.24,.24],ml:[-.25,0],mr:[.25,0]}; const map={1:['c'],2:['tl','br'],3:['tl','c','br'],4:['tl','tr','bl','br'],5:['tl','tr','c','bl','br'],6:['tl','tr','ml','mr','bl','br']}[v]||['c']; map.forEach(k=>{const [x,y]=pos[k]; const px=x*s, py=y*s; const pg=ctx.createRadialGradient(px-r*.25,py-r*.25,r*.1,px,py,r); pg.addColorStop(0,'#fffef4'); pg.addColorStop(.55,'#f8f0d8'); pg.addColorStop(1,'#a89d83'); ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='rgba(0,0,0,.32)';ctx.lineWidth=1;ctx.stroke();});}
+
+const saved=localStorage.getItem('threesDiceState'); if(saved){try{applyState(JSON.parse(saved));}catch(e){}}
+if(!dice.length) startTurn(); resize(); updateUI(); draw(); if(currentRoom) window.joinRoom();
+</script>
+</body>
+</html>

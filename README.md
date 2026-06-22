@@ -1,5 +1,9 @@
-# Three's Company Dice v12
+Three's Company Dice v13
 
-Fixes iPhone audio unlock. Upload index.html and README.md to the GitHub repo root.
-
-On iPhone, tap Enable / Test Sound once, then roll. If silent mode is on, turn it off and raise volume.
+Changes:
+- Sound button is now just Sound / Sound On
+- Keeps v12 iPhone audio unlock
+- Swipe up only works on dice table
+- Prevents page from scrolling during table swipe
+- Adds minimum swipe distance
+- Adds haptic vibration on roll when supported

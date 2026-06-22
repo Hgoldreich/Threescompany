@@ -1,7 +1,3 @@
-# Three's Company Dice v14
+# Three's Company Dice v16
 
-Changes:
-- Removed swipe-to-roll. Use the Roll Dice button only.
-- Fixed phone dice overlap with smaller square dice and wider landing spots.
-- Fixed phone dice selection by using pointer/tap handling instead of swipe touch handlers.
-- Kept working iPhone sound unlock.
+Fixes sound toggle so Sound Off stays off during every roll. Upload index.html and README.md to the GitHub repo root.

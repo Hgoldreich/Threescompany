@@ -1,11 +1,5 @@
-# 3s Are Zero Dice - Multiplayer v2
+# Three's Company Dice v12
 
-Deploy this folder to AWS Amplify or GitHub Pages.
+Fixes iPhone audio unlock. Upload index.html and README.md to the GitHub repo root.
 
-Room URLs use query strings, for example:
-
-`https://YOUR-AMPLIFY-URL/?room=Vegas`
-
-Firebase Realtime Database path used:
-
-`dicegame/rooms/{roomName}`
+On iPhone, tap Enable / Test Sound once, then roll. If silent mode is on, turn it off and raise volume.

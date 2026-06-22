@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Three's Company Dice - Multiplayer v13</title>
+<title>Three's Company Dice - Multiplayer v14</title>
 <style>
   :root{--bg:#0b1220;--card:#fff;--ink:#111827;--muted:#64748b;--accent:#2563eb;--good:#16a34a;--warn:#dc2626;--line:#dbe3ef}
   *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at top,#f8fafc 0,#e7edf6 50%,#cfd9e8 100%);color:var(--ink)}
@@ -11,9 +11,9 @@
   .card{background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0;box-shadow:0 10px 26px rgba(15,23,42,.08)}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.grow{flex:1} input{padding:12px;border:1px solid #cbd5e1;border-radius:12px;font-size:16px;min-width:170px}
   button{border:0;border-radius:12px;padding:12px 16px;background:var(--accent);color:white;font-weight:850;font-size:16px;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,.18)} button.secondary{background:#374151} button.good{background:var(--good)} button.danger{background:var(--warn)} button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
-  .tableShell{position:relative;margin:16px 0;border-radius:28px;padding:16px;background:linear-gradient(135deg,#7b4a27 0%,#3b2314 42%,#170d08 100%);box-shadow:0 24px 46px rgba(0,0,0,.34), inset 0 0 0 2px rgba(255,255,255,.10), inset 0 0 36px rgba(0,0,0,.5);overflow:hidden;touch-action:none;overscroll-behavior:contain;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  .tableShell{position:relative;margin:16px 0;border-radius:28px;padding:16px;background:linear-gradient(135deg,#7b4a27 0%,#3b2314 42%,#170d08 100%);box-shadow:0 24px 46px rgba(0,0,0,.34), inset 0 0 0 2px rgba(255,255,255,.10), inset 0 0 36px rgba(0,0,0,.5);overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
   .tableShell:before{content:"";position:absolute;inset:5px;border-radius:23px;border:3px solid rgba(83,45,21,.85);box-shadow:inset 0 0 18px rgba(0,0,0,.55);pointer-events:none;z-index:2}
-  canvas{display:block;width:100%;aspect-ratio:16/10;max-height:560px;border-radius:20px;background:#14532d;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;box-shadow:inset 0 0 115px rgba(0,0,0,.58);image-rendering:auto}
+  canvas{display:block;width:100%;aspect-ratio:16/10;max-height:560px;border-radius:20px;background:#14532d;touch-action:manipulation;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;box-shadow:inset 0 0 115px rgba(0,0,0,.58);image-rendering:auto}
   @media (max-width: 640px){.wrap{padding:10px} h1{font-size:22px}.card{padding:12px;border-radius:14px}.tableShell{padding:10px;border-radius:22px} canvas{aspect-ratio:1/1;max-height:none}.hint{font-size:12px;left:16px;bottom:16px}.big{font-size:26px}.score{font-size:20px} button{width:100%;font-size:16px} .row{gap:8px} input{width:100%}}
   .hint{position:absolute;left:24px;bottom:22px;background:rgba(0,0,0,.45);color:white;border-radius:999px;padding:8px 12px;font-size:13px;backdrop-filter:blur(6px)}
   .big{font-size:34px;font-weight:950}.score{font-size:22px;font-weight:950}.pill{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:6px 10px;background:#fff;font-weight:850}.pill.live{background:#dcfce7;border-color:#86efac;color:#166534}.pill.local{background:#fef9c3;border-color:#fde68a;color:#854d0e}
@@ -23,7 +23,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><div><h1>Three's Company Dice <span class="mini">v13 swipe + sound</span></h1><div class="muted">Lowest score wins • multiplayer-ready</div></div><div id="cloudPill" class="pill local">Local mode</div></div>
+  <div class="top"><div><h1>Three's Company Dice <span class="mini">v14 stable touch</span></h1><div class="muted">Lowest score wins • multiplayer-ready</div></div><div id="cloudPill" class="pill local">Local mode</div></div>
 
   <div class="card">
     <h2>Room</h2>
@@ -36,7 +36,7 @@
 
   <div class="card">
     <div class="row"><div class="grow"><div class="muted">Current player</div><div id="currentPlayer" class="big">Add players to begin</div></div><div><div class="muted">This game</div><div id="turnScore" class="score">0</div></div><div><div class="muted">Dice left</div><div id="diceLeft" class="score">5</div></div></div>
-    <div class="tableShell"><canvas id="tableCanvas"></canvas><div class="hint">Tap dice to select • Swipe up to roll</div></div>
+    <div class="tableShell"><canvas id="tableCanvas"></canvas><div class="hint">Tap dice to select</div></div>
     <div class="row" style="justify-content:center"><button id="rollBtn" onclick="rollDice()">Roll Dice</button><button id="soundBtn" class="secondary" onclick="enableSound()">🔊 Sound</button><button id="removeBtn" class="good" onclick="removeSelected()" disabled>Keep</button><button id="endTurnBtn" class="secondary" onclick="finishTurn()" disabled>Finish Turn</button><button class="secondary" onclick="newGame()">New Round</button></div>
     <p id="message" class="notice">After each roll, select the dice to remove. 3's count as zero. You can select multiple dice.</p>
   </div>
@@ -138,7 +138,11 @@ function setMsg(s){message=s;document.getElementById('message').textContent=s}
 function activeDice(){return dice.filter(d=>!d.removed)}
 function activeThrees(){return dice.map((d,i)=>({d,i})).filter(x=>!x.d.removed && x.d.value===3).map(x=>x.i)}
 function validSelection(){ return hasRolled && selected.size>0; }
-function dieSize(){return Math.max(54,Math.min(118,Math.min(W,H)*.19))}
+function dieSize(){
+  const base = Math.min(W,H);
+  // Smaller on phones so the dice never overlap and every die remains tappable.
+  return Math.max(42, Math.min(96, base * (W < 520 ? 0.155 : 0.17)));
+}
 
 function blankRoomState(){
   return {players:[], currentIndex:0, dice:[], selected:[], hasRolled:false, isRolling:false, message:'Room cleared. Add players to begin.', lastRollId:null, updatedAt:Date.now(), clearedAt:Date.now()};
@@ -175,7 +179,23 @@ window.clearRoom=async function(){
 };
 
 function startTurn(){dice=Array.from({length:5},(_,i)=>({value:null,removed:false,x:0,y:0,tx:0,ty:0,rot:0,scale:1,h:0,spin:0,id:i})); selected.clear(); hasRolled=false; isRolling=false; layoutDice(true); setMsg(players.length?`${players[currentIndex].name}, roll 5 dice.`:'Add players to begin'); updateUI(); draw();}
-function layoutDice(force){const active=activeDice(); const n=active.length; const spots={5:[[28,35],[47,30],[66,37],[38,62],[60,67]],4:[[32,34],[64,34],[36,65],[67,64]],3:[[34,36],[55,50],[70,66]],2:[[38,44],[62,58]],1:[[50,50]]}[n]||[]; active.forEach((d,i)=>{d.tx=W*spots[i][0]/100; d.ty=H*spots[i][1]/100; if(force||!d.x){d.x=d.tx;d.y=d.ty;d.rot=(Math.random()*50-25)*Math.PI/180}})}
+function layoutDice(force){
+  const active=activeDice();
+  const n=active.length;
+  // Wide-spaced fixed landing spots. This prevents overlap on iPhone portrait.
+  const spots={
+    5:[[22,28],[50,24],[78,28],[34,70],[66,70]],
+    4:[[25,28],[75,28],[25,70],[75,70]],
+    3:[[25,32],[50,54],[75,70]],
+    2:[[32,42],[68,62]],
+    1:[[50,52]]
+  }[n]||[];
+  active.forEach((d,i)=>{
+    d.tx=W*spots[i][0]/100;
+    d.ty=H*spots[i][1]/100;
+    if(force||!d.x){d.x=d.tx;d.y=d.ty;d.rot=(Math.random()*36-18)*Math.PI/180}
+  });
+}
 
 window.rollDice=function(){if(!players.length||isRolling)return; unlockAudio(false); const active=activeDice(); if(!active.length)return; selected.clear(); hasRolled=true; isRolling=true; lastRollId=makeId(); const finals=active.map(()=>randDie()); active.forEach((d,i)=>{d.final=finals[i]; d.value=randDie();}); setMsg('Dice are dropping onto the felt...'); updateUI(); playRattle(); commit(); animateRoll(lastRollId, finals, true);}
 function prepDie(d,i,seed,duration){const r1=seedRand(seed+i*13), r2=seedRand(seed+i*29), r3=seedRand(seed+i*41), r4=seedRand(seed+i*61); d.sx=d.tx+(r1*W*.24-W*.12); d.sy=-90-r2*H*.35; d.ex=d.tx+(r3*70-35); d.ey=d.ty+(r4*48-24); d.rot0=r1*Math.PI*2; d.spin=(r2>.5?1:-1)*(Math.PI*5+r3*Math.PI*4); d.delay=i*60; d.lastImpact=-1;}
@@ -187,50 +207,22 @@ function animateRemoteRoll(rollId){const active=activeDice(); const finals=activ
 window.removeSelected=function(){if(isRolling||!hasRolled||!validSelection()){setMsg('Select one or more dice to remove.');return;} let add=0; selected.forEach(i=>{const d=dice[i]; if(d&&!d.removed){add+=scoreVal(d.value); d.removed=true;}}); players[currentIndex].game+=add; selected.clear(); hasRolled=false; layoutDice(true); const left=activeDice().length; if(left===0){setMsg(`Turn complete. Score for this game: ${players[currentIndex].game}.`); document.getElementById('endTurnBtn').disabled=false;}else{setMsg(`Removed dice for ${add} point${add===1?'':'s'}. Roll the remaining ${left} dice.`);} updateUI(); draw(); commit();}
 window.finishTurn=function(){if(!players.length)return; const p=players[currentIndex]; p.total+=p.game; p.games+=1; p.done=true; const next=players.findIndex(x=>!x.done); if(next===-1){const low=Math.min(...players.map(x=>x.game)); const winners=players.filter(x=>x.game===low).map(x=>x.name).join(', '); setMsg(`Game complete. Low score this game: ${winners} with ${low}. Press New Round to play again.`); dice=[]; hasRolled=false;}else{currentIndex=next; startTurn();} updateUI(); draw(); commit();}
 function updateUI(){const p=players[currentIndex]; document.getElementById('currentPlayer').textContent=p?p.name:'Add players to begin'; document.getElementById('turnScore').textContent=p?p.game:0; document.getElementById('diceLeft').textContent=dice.length?activeDice().length:5; document.getElementById('rollBtn').disabled=!p||isRolling||hasRolled||activeDice().length===0; document.getElementById('removeBtn').disabled=!p||isRolling||!hasRolled||!validSelection(); document.getElementById('endTurnBtn').disabled=!p||activeDice().length!==0; const soundBtn=document.getElementById('soundBtn'); if(soundBtn) soundBtn.textContent=(soundEnabled&&audioUnlocked)?'🔊 Sound On':'🔊 Sound'; const body=document.getElementById('scoreboard'); const low=players.length?Math.min(...players.map(p=>p.total)):0; const sharedGames=players.length?Math.max(...players.map(p=>p.games||0)):0; body.innerHTML=players.map((pl,i)=>`<tr><td>${escapeHtml(pl.name)}</td><td>${i===currentIndex&&!pl.done?'Playing':pl.done?'Done':'Waiting'}</td><td class="right">${pl.game}</td><td class="right ${pl.total===low?'winner':''}">${pl.total}</td><td class="right">${sharedGames}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">No players yet</td></tr>'; updateRoomUI();}
-canvas.addEventListener('click',e=>{if(isRolling||!hasRolled)return; const rect=canvas.getBoundingClientRect(); const x=(e.clientX-rect.left)*(W/rect.width), y=(e.clientY-rect.top)*(H/rect.height); for(let i=dice.length-1;i>=0;i--){const d=dice[i]; if(d.removed)continue; const s=dieSize(); if(Math.abs(x-d.x)<s*.62&&Math.abs(y-d.y)<s*.62){selected.has(i)?selected.delete(i):selected.add(i); updateUI(); draw(); commit(); return;}}});
-
-// Swipe up to roll, so the phone feels more like physically throwing dice onto the table.
-// This also counts as a user gesture for iPhone audio unlock.
-let swipeStartX=0, swipeStartY=0, swipeStartT=0, swipeTracking=false;
-function rollFromGesture(){
-  const btn=document.getElementById('rollBtn');
-  if(btn && !btn.disabled){
-    unlockAudio(false);
-    if(navigator.vibrate) navigator.vibrate(22);
-    window.rollDice();
+function selectDieAt(clientX, clientY){
+  if(isRolling||!hasRolled) return;
+  const rect=canvas.getBoundingClientRect();
+  const x=(clientX-rect.left)*(W/rect.width), y=(clientY-rect.top)*(H/rect.height);
+  for(let i=dice.length-1;i>=0;i--){
+    const d=dice[i]; if(d.removed) continue;
+    const s=dieSize();
+    if(Math.abs(x-d.x)<s*.72 && Math.abs(y-d.y)<s*.72){
+      selected.has(i)?selected.delete(i):selected.add(i);
+      updateUI(); draw(); commit(); return;
+    }
   }
 }
-function handleTouchStart(e){
-  const t=e.changedTouches && e.changedTouches[0]; if(!t)return;
-  swipeStartX=t.clientX; swipeStartY=t.clientY; swipeStartT=Date.now(); swipeTracking=true;
-  e.preventDefault();
-}
-function handleTouchMove(e){
-  if(swipeTracking) e.preventDefault();
-}
-function handleTouchEnd(e){
-  if(!swipeTracking)return;
-  swipeTracking=false;
-  const t=e.changedTouches && e.changedTouches[0]; if(!t)return;
-  const dx=t.clientX-swipeStartX, dy=t.clientY-swipeStartY, dt=Date.now()-swipeStartT;
-  const swipeDistance = Math.abs(dy);
-  const mostlyVertical = Math.abs(dx) < 95;
-  const fastEnough = dt < 850;
-  if(dy < -75 && swipeDistance > 75 && mostlyVertical && fastEnough){
-    e.preventDefault();
-    rollFromGesture();
-  }
-}
-canvas.addEventListener('touchstart',handleTouchStart,{passive:false});
-canvas.addEventListener('touchmove',handleTouchMove,{passive:false});
-canvas.addEventListener('touchend',handleTouchEnd,{passive:false});
-const tableShell=document.querySelector('.tableShell');
-if(tableShell){
-  tableShell.addEventListener('touchstart',handleTouchStart,{passive:false});
-  tableShell.addEventListener('touchmove',handleTouchMove,{passive:false});
-  tableShell.addEventListener('touchend',handleTouchEnd,{passive:false});
-}
+canvas.addEventListener('pointerup',e=>{ selectDieAt(e.clientX,e.clientY); });
 
+// No swipe-to-roll in this version. It caused the page to move and made dice selection unreliable on phones.
 // Unlock audio from the earliest possible user gesture on iPhone/iPad.
 ['pointerdown','touchstart','click'].forEach(ev=>{
   document.addEventListener(ev,()=>{ if(soundEnabled && !audioUnlocked) unlockAudio(false); }, {passive:true, once:false});

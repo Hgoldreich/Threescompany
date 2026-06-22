@@ -1,9 +1,7 @@
-Three's Company Dice v13
+# Three's Company Dice v14
 
 Changes:
-- Sound button is now just Sound / Sound On
-- Keeps v12 iPhone audio unlock
-- Swipe up only works on dice table
-- Prevents page from scrolling during table swipe
-- Adds minimum swipe distance
-- Adds haptic vibration on roll when supported
+- Removed swipe-to-roll. Use the Roll Dice button only.
+- Fixed phone dice overlap with smaller square dice and wider landing spots.
+- Fixed phone dice selection by using pointer/tap handling instead of swipe touch handlers.
+- Kept working iPhone sound unlock.

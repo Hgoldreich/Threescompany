@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Three's Company Dice - Multiplayer v16</title>
+<title>Three's Company Dice - Multiplayer v17</title>
 <style>
   :root{--bg:#0b1220;--card:#fff;--ink:#111827;--muted:#64748b;--accent:#2563eb;--good:#16a34a;--warn:#dc2626;--line:#dbe3ef}
   *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(circle at top,#f8fafc 0,#e7edf6 50%,#cfd9e8 100%);color:var(--ink)}
@@ -23,7 +23,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><div><h1>Three's Company Dice <span class="mini">v16 sound toggle fix</span></h1><div class="muted">Lowest score wins • multiplayer-ready</div></div><div id="cloudPill" class="pill local">Local mode</div></div>
+  <div class="top"><div><h1>Three's Company Dice <span class="mini">v17 separate Firebase</span></h1><div class="muted">Lowest score wins • multiplayer-ready</div></div><div id="cloudPill" class="pill local">Local mode</div></div>
 
   <div class="card">
     <h2>Room</h2>
@@ -48,17 +48,17 @@
 <script type="module">
 /*
   LIVE MULTIPLAYER SETUP:
-  This version uses your existing Firebase Realtime Database and writes only under:
-  dicegame/rooms/{roomName}
+  This version uses the dedicated ThreeCompanyDice Firebase Realtime Database and writes only under:
+  rooms/{roomName}
 */
 const firebaseConfig = {
-  apiKey: "AIzaSyAP7a9OCfjoSEt2WWbNFH1qZ-Wr29PZxK4",
-  authDomain: "goldreich-cloud9-live-lightbar.firebaseapp.com",
-  databaseURL: "https://goldreich-cloud9-live-lightbar-default-rtdb.firebaseio.com",
-  projectId: "goldreich-cloud9-live-lightbar",
-  storageBucket: "goldreich-cloud9-live-lightbar.firebasestorage.app",
-  messagingSenderId: "725981865849",
-  appId: "1:725981865849:web:04eb9272aea73c5b6f71a8"
+  apiKey: "AIzaSyC-qv0oqNyJSBpToYfP7L0dceb84QfEKjE",
+  authDomain: "threescompanydice.firebaseapp.com",
+  databaseURL: "https://threescompanydice-default-rtdb.firebaseio.com",
+  projectId: "threescompanydice",
+  storageBucket: "threescompanydice.firebasestorage.app",
+  messagingSenderId: "430528087783",
+  appId: "1:430528087783:web:e5dfe6f58c66b2c9b28442"
 };
 
 let db=null, roomRef=null, unsub=null, applyingRemote=false, online=false;
@@ -172,7 +172,7 @@ function serialize(){return {players,currentIndex,dice,selected:[...selected],ha
 async function commit(){ if(applyingRemote) return; localStorage.setItem('threesDiceState', JSON.stringify(serialize())); if(roomRef&&online){ await window._fb.set(roomRef, serialize()); } }
 function applyState(s){ if(!s) return; applyingRemote=true; players=s.players||[]; currentIndex=s.currentIndex||0; dice=s.dice||[]; selected=new Set(s.selected||[]); hasRolled=!!s.hasRolled; isRolling=!!s.isRolling; lastRollId=s.lastRollId||null; message=s.message||message; applyingRemote=false; layoutDice(false); updateUI(); draw(); if(isRolling && lastRollId){animateRemoteRoll(lastRollId);} }
 
-window.joinRoom=async function(){ currentRoom=(document.getElementById('roomName').value.trim()||currentRoom||'dice-room').replace(/[^a-z0-9_-]/gi,'-'); history.replaceState(null,'',`?room=${encodeURIComponent(currentRoom)}`); updateRoomUI(); if(unsub)unsub(); if(online){ const {ref,onValue,set,get}=window._fb; roomRef=ref(db,'dicegame/rooms/'+currentRoom); const snap=await get(roomRef); if(!snap.exists()) await set(roomRef, serialize()); unsub=onValue(roomRef,s=>{ if(s.exists()) applyState(s.val()); }); } else { roomRef=null; localStorage.setItem('threesDiceRoom', currentRoom); } };
+window.joinRoom=async function(){ currentRoom=(document.getElementById('roomName').value.trim()||currentRoom||'dice-room').replace(/[^a-z0-9_-]/gi,'-'); history.replaceState(null,'',`?room=${encodeURIComponent(currentRoom)}`); updateRoomUI(); if(unsub)unsub(); if(online){ const {ref,onValue,set,get}=window._fb; roomRef=ref(db,'rooms/'+currentRoom); const snap=await get(roomRef); if(!snap.exists()) await set(roomRef, serialize()); unsub=onValue(roomRef,s=>{ if(s.exists()) applyState(s.val()); }); } else { roomRef=null; localStorage.setItem('threesDiceRoom', currentRoom); } };
 window.copyRoomLink=async function(){ const link=location.href; try{await navigator.clipboard.writeText(link); setMsg('Room link copied.');}catch(e){setMsg(link);} };
 function updateRoomUI(){ document.getElementById('roomName').value=currentRoom; document.getElementById('shareLink').textContent=currentRoom?location.href:'Join a room to create a share link.'; const pill=document.getElementById('cloudPill'); pill.textContent=online&&roomRef?'Live room: '+currentRoom:'Local mode'; pill.className='pill '+(online&&roomRef?'live':'local'); }
 

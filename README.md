@@ -1,3 +1,7 @@
-# Three's Company Dice v16
+# Three's Company Dice v17
 
-Fixes sound toggle so Sound Off stays off during every roll. Upload index.html and README.md to the GitHub repo root.
+Uses the dedicated ThreeCompanyDice Firebase project.
+
+Upload the contents of this folder to the GitHub repo root:
+- index.html
+- README.md

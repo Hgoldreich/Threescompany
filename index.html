@@ -23,7 +23,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="top"><div><h1>Three's Company Dice <span class="mini">v7 flexible removal</span></h1><div class="muted">Lowest score wins • multiplayer-ready</div></div><div id="cloudPill" class="pill local">Local mode</div></div>
+  <div class="top"><div><h1>Three's Company Dice <span class="mini">v10 phone sound</span></h1><div class="muted">Lowest score wins • multiplayer-ready</div></div><div id="cloudPill" class="pill local">Local mode</div></div>
 
   <div class="card">
     <h2>Room</h2>
@@ -32,12 +32,12 @@
     <div id="shareLink" class="share"></div>
   </div>
 
-  <div class="card"><div class="row"><input id="playerName" placeholder="Player name" /><button onclick="addPlayer()">Add Player</button><button class="secondary" onclick="newGame()">New Game</button><button class="danger" onclick="resetTotals()">Reset Totals</button><button class="danger" onclick="clearRoom()">Clear Room</button></div><p class="muted">Scores carry forward. Each roll is a 2-second dice drop with impact sounds, red casino-style dice, and phone-safe square sizing.</p></div>
+  <div class="card"><div class="row"><input id="playerName" placeholder="Player name" /><button onclick="addPlayer()">Add Player</button><button class="danger" onclick="resetTotals()">Reset Totals</button><button class="danger" onclick="clearRoom()">Clear Room</button></div><p class="muted">Scores carry forward. Each roll is a 2-second dice drop with impact sounds, red casino-style dice, and phone-safe square sizing.</p></div>
 
   <div class="card">
     <div class="row"><div class="grow"><div class="muted">Current player</div><div id="currentPlayer" class="big">Add players to begin</div></div><div><div class="muted">This game</div><div id="turnScore" class="score">0</div></div><div><div class="muted">Dice left</div><div id="diceLeft" class="score">5</div></div></div>
-    <div class="tableShell"><canvas id="tableCanvas"></canvas><div class="hint">Tap dice to select, then Keep</div></div>
-    <div class="row" style="justify-content:center"><button id="rollBtn" onclick="rollDice()">Roll Dice</button><button id="soundBtn" class="secondary" onclick="toggleSound()">Sound On</button><button id="removeBtn" class="good" onclick="removeSelected()" disabled>Keep</button><button id="endTurnBtn" class="secondary" onclick="finishTurn()" disabled>Finish Turn</button></div>
+    <div class="tableShell"><canvas id="tableCanvas"></canvas><div class="hint">Tap dice to select/remove</div></div>
+    <div class="row" style="justify-content:center"><button id="rollBtn" onclick="rollDice()">Roll Dice</button><button id="soundBtn" class="secondary" onclick="toggleSound()">Sound On</button><button id="removeBtn" class="good" onclick="removeSelected()" disabled>Keep</button><button id="endTurnBtn" class="secondary" onclick="finishTurn()" disabled>Finish Turn</button><button class="secondary" onclick="newGame()">New Game</button></div>
     <p id="message" class="notice">After each roll, select the dice to remove. 3's count as zero. You can select multiple dice.</p>
   </div>
 
@@ -69,85 +69,35 @@ try{
   const app=initializeApp(firebaseConfig); db=getDatabase(app); online=true;
 }catch(e){ console.warn('Firebase not connected; using local mode.', e); online=false; }
 
-let players=[], currentIndex=0, dice=[], selected=new Set(), hasRolled=false, isRolling=false, message='After each roll, select the dice to keep. 3\'s count as zero. You can select multiple dice.';
+let players=[], currentIndex=0, dice=[], selected=new Set(), hasRolled=false, isRolling=false, message='After each roll, select the dice to remove. 3\'s count as zero. You can select multiple dice.';
 let currentRoom=new URLSearchParams(location.search).get('room') || '';
 const canvas=document.getElementById('tableCanvas'), ctx=canvas.getContext('2d');
 let W=900,H=500, dpr=1, animId=null, lastRollId=null;
 let soundEnabled = localStorage.getItem('threesDiceSound') !== 'off';
 let audioCtx = null;
-let soundUnlocked = false;
-let masterGain = null;
-
-async function unlockAudio(forcePing=false){
-  if(!soundEnabled) return false;
-  const AC = window.AudioContext || window.webkitAudioContext;
-  if(!AC) return false;
-  if(!audioCtx){
-    audioCtx = new AC();
-    masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0.95;
-    masterGain.connect(audioCtx.destination);
-  }
-  try{
-    if(audioCtx.state === 'suspended') await audioCtx.resume();
-    const buffer = audioCtx.createBuffer(1, 1, 22050);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buffer;
-    src.connect(masterGain || audioCtx.destination);
-    src.start(0);
-    soundUnlocked = audioCtx.state === 'running';
-    if(forcePing && soundUnlocked) setTimeout(()=>playImpact(0.75), 30);
-    return soundUnlocked;
-  }catch(e){
-    soundUnlocked = false;
-    return false;
-  }
-}
 function ensureAudio(){
-  if(!soundEnabled || !audioCtx || audioCtx.state !== 'running') return null;
+  if(!soundEnabled) return null;
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 function playImpact(intensity=.6){
-  const ac = ensureAudio();
-  if(!ac){ if(navigator.vibrate && soundEnabled) navigator.vibrate(18); return; }
+  const ac = ensureAudio(); if(!ac) return;
   const now = ac.currentTime;
-
-  const thud=ac.createOscillator(); const tg=ac.createGain();
-  thud.type='sine'; thud.frequency.setValueAtTime(125+Math.random()*45, now); thud.frequency.exponentialRampToValueAtTime(48, now+0.09);
-  tg.gain.setValueAtTime(0.25*intensity, now); tg.gain.exponentialRampToValueAtTime(0.0001, now+0.12);
-  thud.connect(tg); tg.connect(masterGain || ac.destination); thud.start(now); thud.stop(now+0.13);
-
-  const dur=.10, sr=ac.sampleRate, buf=ac.createBuffer(1, Math.floor(sr*dur), sr), data=buf.getChannelData(0);
-  for(let i=0;i<data.length;i++){ const env=Math.pow(1-i/data.length,2.1); data[i]=(Math.random()*2-1)*env*0.5*intensity; }
-  const noise=ac.createBufferSource(); noise.buffer=buf;
-  const hp=ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=850;
-  const ng=ac.createGain(); ng.gain.value=0.62*intensity;
-  noise.connect(hp); hp.connect(ng); ng.connect(masterGain || ac.destination); noise.start(now); noise.stop(now+dur);
-
-  const click=ac.createOscillator(); const cg=ac.createGain();
-  click.type='square'; click.frequency.setValueAtTime(950+Math.random()*550, now);
-  cg.gain.setValueAtTime(0.04*intensity, now); cg.gain.exponentialRampToValueAtTime(0.0001, now+0.025);
-  click.connect(cg); cg.connect(masterGain || ac.destination); click.start(now); click.stop(now+0.03);
-
-  if(navigator.vibrate && soundEnabled) navigator.vibrate(Math.round(10+18*intensity));
+  const noiseBuffer = ac.createBuffer(1, Math.floor(ac.sampleRate * 0.045), ac.sampleRate);
+  const data = noiseBuffer.getChannelData(0);
+  for(let i=0;i<data.length;i++) data[i]=(Math.random()*2-1)*Math.pow(1-i/data.length,2.2);
+  const noise = ac.createBufferSource(); noise.buffer = noiseBuffer;
+  const filter = ac.createBiquadFilter(); filter.type='bandpass'; filter.frequency.value=650+Math.random()*700; filter.Q.value=1.7;
+  const gain = ac.createGain(); gain.gain.setValueAtTime(0.0001, now); gain.gain.exponentialRampToValueAtTime(0.09*intensity, now+0.004); gain.gain.exponentialRampToValueAtTime(0.0001, now+0.075);
+  noise.connect(filter); filter.connect(gain); gain.connect(ac.destination); noise.start(now); noise.stop(now+0.08);
+  const osc=ac.createOscillator(); const og=ac.createGain(); osc.type='triangle'; osc.frequency.setValueAtTime(130+Math.random()*80, now); og.gain.setValueAtTime(0.03*intensity, now); og.gain.exponentialRampToValueAtTime(0.0001, now+0.06); osc.connect(og); og.connect(ac.destination); osc.start(now); osc.stop(now+0.07);
 }
 function playRattle(){
-  if(!soundEnabled) return;
-  for(let i=0;i<12;i++) setTimeout(()=>playImpact(.20+Math.random()*.35), i*110+Math.random()*45);
+  const ac = ensureAudio(); if(!ac) return;
+  for(let i=0;i<7;i++) setTimeout(()=>playImpact(.22+Math.random()*.22), i*95+Math.random()*25);
 }
-window.toggleSound=async function(){
-  soundEnabled=!soundEnabled;
-  localStorage.setItem('threesDiceSound',soundEnabled?'on':'off');
-  if(soundEnabled){
-    await unlockAudio(true);
-    setMsg(soundUnlocked ? 'Sound enabled.' : 'Tap Roll Dice once to unlock sound on this phone. Make sure the phone is not muted.');
-  } else {
-    setMsg('Sound off.');
-  }
-  updateUI();
-};
-document.addEventListener('pointerdown', ()=>{ if(soundEnabled && !soundUnlocked) unlockAudio(false); }, {passive:true});
-document.addEventListener('touchend', ()=>{ if(soundEnabled && !soundUnlocked) unlockAudio(false); }, {passive:true});
+window.toggleSound=function(){soundEnabled=!soundEnabled; localStorage.setItem('threesDiceSound',soundEnabled?'on':'off'); updateUI(); if(soundEnabled) { ensureAudio(); playImpact(.5); }};
 
 function scoreVal(v){return v===3?0:v} function randDie(){return Math.floor(Math.random()*6)+1}
 function seedRand(seed){let x=Math.sin(seed)*10000;return x-Math.floor(x)}
@@ -196,16 +146,16 @@ window.clearRoom=async function(){
 function startTurn(){dice=Array.from({length:5},(_,i)=>({value:null,removed:false,x:0,y:0,tx:0,ty:0,rot:0,scale:1,h:0,spin:0,id:i})); selected.clear(); hasRolled=false; isRolling=false; layoutDice(true); setMsg(players.length?`${players[currentIndex].name}, roll 5 dice.`:'Add players to begin'); updateUI(); draw();}
 function layoutDice(force){const active=activeDice(); const n=active.length; const spots={5:[[28,35],[47,30],[66,37],[38,62],[60,67]],4:[[32,34],[64,34],[36,65],[67,64]],3:[[34,36],[55,50],[70,66]],2:[[38,44],[62,58]],1:[[50,50]]}[n]||[]; active.forEach((d,i)=>{d.tx=W*spots[i][0]/100; d.ty=H*spots[i][1]/100; if(force||!d.x){d.x=d.tx;d.y=d.ty;d.rot=(Math.random()*50-25)*Math.PI/180}})}
 
-window.rollDice=async function(){await unlockAudio(false); if(!players.length||isRolling)return; const active=activeDice(); if(!active.length)return; selected.clear(); hasRolled=true; isRolling=true; lastRollId=makeId(); const finals=active.map(()=>randDie()); active.forEach((d,i)=>{d.final=finals[i]; d.value=randDie();}); setMsg('Dice are dropping onto the felt...'); updateUI(); playRattle(); commit(); animateRoll(lastRollId, finals, true);}
+window.rollDice=function(){if(!players.length||isRolling)return; const active=activeDice(); if(!active.length)return; selected.clear(); hasRolled=true; isRolling=true; lastRollId=makeId(); const finals=active.map(()=>randDie()); active.forEach((d,i)=>{d.final=finals[i]; d.value=randDie();}); setMsg('Dice are dropping onto the felt...'); updateUI(); playRattle(); commit(); animateRoll(lastRollId, finals, true);}
 function prepDie(d,i,seed,duration){const r1=seedRand(seed+i*13), r2=seedRand(seed+i*29), r3=seedRand(seed+i*41), r4=seedRand(seed+i*61); d.sx=d.tx+(r1*W*.24-W*.12); d.sy=-90-r2*H*.35; d.ex=d.tx+(r3*70-35); d.ey=d.ty+(r4*48-24); d.rot0=r1*Math.PI*2; d.spin=(r2>.5?1:-1)*(Math.PI*5+r3*Math.PI*4); d.delay=i*60; d.lastImpact=-1;}
 function animateRoll(rollId, finals, shouldCommitEnd){const active=activeDice(); const start=performance.now(), duration=2000; const seed=[...rollId].reduce((a,c)=>a+c.charCodeAt(0),0); active.forEach((d,i)=>prepDie(d,i,seed,duration));
- function step(t){const elapsed=t-start; active.forEach((d,i)=>{let p=Math.max(0,Math.min(1,(elapsed-d.delay)/(duration-d.delay))); if(p<.96 && Math.random()<.28)d.value=randDie(); if(p>=.96)d.value=finals[i]||d.final||randDie(); const ease=1-Math.pow(1-p,3); const bounce=Math.abs(Math.sin(p*Math.PI*3.2))*(1-p)*70; d.x=d.sx+(d.ex-d.sx)*ease; d.y=d.sy+(d.ey-d.sy)*ease+bounce; d.rot=d.rot0+d.spin*ease; d.scale=.86+.14*ease+Math.sin(p*Math.PI)*.08; d.h=(1-p)*80+bounce*.25; const impactPhase=Math.floor(p*4); if(p>.18 && impactPhase!==d.lastImpact && Math.abs(Math.sin(p*Math.PI*3.2))<.18){ d.lastImpact=impactPhase; if(shouldCommitEnd) playImpact(.35+(1-p)*.55); }}); draw(); if(elapsed<duration){animId=requestAnimationFrame(step)}else{active.forEach((d,i)=>{d.x=d.ex;d.y=d.ey;d.rot=(Math.random()*60-30)*Math.PI/180;d.scale=1;d.h=0;d.value=finals[i]||d.final||d.value;}); isRolling=false; selected.clear(); if(shouldCommitEnd) setTimeout(()=>playImpact(.25), 80); setMsg(activeThrees().length ? `You rolled ${activeThrees().length} three${activeThrees().length>1?'s':''}. 3's count as 0, but you may select any dice to keep.` : 'No 3s. Select one or more dice to keep.'); updateUI(); draw(); if(shouldCommitEnd)commit();}}
+ function step(t){const elapsed=t-start; active.forEach((d,i)=>{let p=Math.max(0,Math.min(1,(elapsed-d.delay)/(duration-d.delay))); if(p<.96 && Math.random()<.28)d.value=randDie(); if(p>=.96)d.value=finals[i]||d.final||randDie(); const ease=1-Math.pow(1-p,3); const bounce=Math.abs(Math.sin(p*Math.PI*3.2))*(1-p)*70; d.x=d.sx+(d.ex-d.sx)*ease; d.y=d.sy+(d.ey-d.sy)*ease+bounce; d.rot=d.rot0+d.spin*ease; d.scale=.86+.14*ease+Math.sin(p*Math.PI)*.08; d.h=(1-p)*80+bounce*.25; const impactPhase=Math.floor(p*4); if(p>.18 && impactPhase!==d.lastImpact && Math.abs(Math.sin(p*Math.PI*3.2))<.18){ d.lastImpact=impactPhase; if(shouldCommitEnd) playImpact(.35+(1-p)*.55); }}); draw(); if(elapsed<duration){animId=requestAnimationFrame(step)}else{active.forEach((d,i)=>{d.x=d.ex;d.y=d.ey;d.rot=(Math.random()*60-30)*Math.PI/180;d.scale=1;d.h=0;d.value=finals[i]||d.final||d.value;}); isRolling=false; selected.clear(); if(shouldCommitEnd) setTimeout(()=>playImpact(.25), 80); setMsg(activeThrees().length ? `You rolled ${activeThrees().length} three${activeThrees().length>1?'s':''}. 3's count as 0, but you may select any dice to remove.` : 'No 3s. Select one or more dice to remove.'); updateUI(); draw(); if(shouldCommitEnd)commit();}}
  if(animId) cancelAnimationFrame(animId); animId=requestAnimationFrame(step);
 }
 function animateRemoteRoll(rollId){const active=activeDice(); const finals=active.map(d=>d.final||d.value||randDie()); animateRoll(rollId, finals, false);}
-window.removeSelected=function(){if(isRolling||!hasRolled||!validSelection()){setMsg('Select one or more dice to keep.');return;} let add=0; selected.forEach(i=>{const d=dice[i]; if(d&&!d.removed){add+=scoreVal(d.value); d.removed=true;}}); players[currentIndex].game+=add; selected.clear(); hasRolled=false; layoutDice(true); const left=activeDice().length; if(left===0){setMsg(`Turn complete. Score for this game: ${players[currentIndex].game}.`); document.getElementById('endTurnBtn').disabled=false;}else{setMsg(`Removed dice for ${add} point${add===1?'':'s'}. Roll the remaining ${left} dice.`);} updateUI(); draw(); commit();}
+window.removeSelected=function(){if(isRolling||!hasRolled||!validSelection()){setMsg('Select one or more dice to remove.');return;} let add=0; selected.forEach(i=>{const d=dice[i]; if(d&&!d.removed){add+=scoreVal(d.value); d.removed=true;}}); players[currentIndex].game+=add; selected.clear(); hasRolled=false; layoutDice(true); const left=activeDice().length; if(left===0){setMsg(`Turn complete. Score for this game: ${players[currentIndex].game}.`); document.getElementById('endTurnBtn').disabled=false;}else{setMsg(`Removed dice for ${add} point${add===1?'':'s'}. Roll the remaining ${left} dice.`);} updateUI(); draw(); commit();}
 window.finishTurn=function(){if(!players.length)return; const p=players[currentIndex]; p.total+=p.game; p.games+=1; p.done=true; const next=players.findIndex(x=>!x.done); if(next===-1){const low=Math.min(...players.map(x=>x.game)); const winners=players.filter(x=>x.game===low).map(x=>x.name).join(', '); setMsg(`Game complete. Low score this game: ${winners} with ${low}. Press New Game to play again.`); dice=[]; hasRolled=false;}else{currentIndex=next; startTurn();} updateUI(); draw(); commit();}
-function updateUI(){const p=players[currentIndex]; document.getElementById('currentPlayer').textContent=p?p.name:'Add players to begin'; document.getElementById('turnScore').textContent=p?p.game:0; document.getElementById('diceLeft').textContent=dice.length?activeDice().length:5; document.getElementById('rollBtn').disabled=!p||isRolling||hasRolled||activeDice().length===0; document.getElementById('removeBtn').disabled=!p||isRolling||!hasRolled||!validSelection(); document.getElementById('endTurnBtn').disabled=!p||activeDice().length!==0; const soundBtn=document.getElementById('soundBtn'); if(soundBtn) soundBtn.textContent=soundEnabled ? (soundUnlocked ? 'Sound On' : 'Enable Sound') : 'Sound Off'; const body=document.getElementById('scoreboard'); const low=players.length?Math.min(...players.map(p=>p.total)):0; body.innerHTML=players.map((pl,i)=>`<tr><td>${escapeHtml(pl.name)}</td><td>${i===currentIndex&&!pl.done?'Playing':pl.done?'Done':'Waiting'}</td><td class="right">${pl.game}</td><td class="right ${pl.total===low?'winner':''}">${pl.total}</td><td class="right">${pl.games}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">No players yet</td></tr>'; updateRoomUI();}
+function updateUI(){const p=players[currentIndex]; document.getElementById('currentPlayer').textContent=p?p.name:'Add players to begin'; document.getElementById('turnScore').textContent=p?p.game:0; document.getElementById('diceLeft').textContent=dice.length?activeDice().length:5; document.getElementById('rollBtn').disabled=!p||isRolling||hasRolled||activeDice().length===0; document.getElementById('removeBtn').disabled=!p||isRolling||!hasRolled||!validSelection(); document.getElementById('endTurnBtn').disabled=!p||activeDice().length!==0; const soundBtn=document.getElementById('soundBtn'); if(soundBtn) soundBtn.textContent=soundEnabled?'Sound On':'Enable Sound'; const body=document.getElementById('scoreboard'); const low=players.length?Math.min(...players.map(p=>p.total)):0; const sharedGames=players.length?Math.max(...players.map(p=>p.games||0)):0; body.innerHTML=players.map((pl,i)=>`<tr><td>${escapeHtml(pl.name)}</td><td>${i===currentIndex&&!pl.done?'Playing':pl.done?'Done':'Waiting'}</td><td class="right">${pl.game}</td><td class="right ${pl.total===low?'winner':''}">${pl.total}</td><td class="right">${sharedGames}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">No players yet</td></tr>'; updateRoomUI();}
 canvas.addEventListener('click',e=>{if(isRolling||!hasRolled)return; const rect=canvas.getBoundingClientRect(); const x=(e.clientX-rect.left)*(W/rect.width), y=(e.clientY-rect.top)*(H/rect.height); for(let i=dice.length-1;i>=0;i--){const d=dice[i]; if(d.removed)continue; const s=dieSize(); if(Math.abs(x-d.x)<s*.62&&Math.abs(y-d.y)<s*.62){selected.has(i)?selected.delete(i):selected.add(i); updateUI(); draw(); commit(); return;}}});
 function resize(){dpr=window.devicePixelRatio||1; const r=canvas.getBoundingClientRect(); W=Math.max(260,Math.floor(r.width)); H=Math.max(260,Math.floor(r.height)); canvas.width=W*dpr; canvas.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); layoutDice(false); draw();}
 window.addEventListener('resize',resize);
